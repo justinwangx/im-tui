@@ -1,187 +1,283 @@
-use chrono::{DateTime, Local, TimeZone};
+mod cli;
+mod config;
+mod db;
+mod error;
+mod formatter;
+
+use crate::cli::{Cli, Commands};
+use crate::config::Config;
+use crate::db::MessageDB;
+use crate::error::{Error, Result};
+use crate::formatter::{format_display_number, format_phone_number, format_relative_time};
 use clap::Parser;
-use rusqlite::{Connection, Result, params};
-use serde::{Deserialize, Serialize};
-use std::env;
-use std::path::PathBuf;
+use std::process;
 
-fn format_phone_number(number: &str) -> String {
-    // If it's a digit-only string without country code, add +1
-    if number.chars().all(|c| c.is_digit(10)) {
-        format!("+1{}", number)
-    } else if !number.contains('+')
-        && number
-            .trim_start_matches('1')
-            .chars()
-            .all(|c| c.is_digit(10))
-    {
-        // Handle numbers with country code digit but missing "+" (e.g., "13015057171" → "+13015057171")
-        format!("+{}", number)
-    } else {
-        // Already has a country code or isn't a phone number
-        number.to_string()
+/// Application name used for configuration files.
+pub const APP_NAME: &str = "gf";
+
+/// Application version.
+pub const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
+
+fn main() {
+    if let Err(err) = run() {
+        eprintln!("Error: {}", err);
+
+        // Try to print the config path even if there's an error
+        if let Some(path) = Config::config_path() {
+            eprintln!("Configuration file is located at: {}", path.display());
+            eprintln!("You may need to delete this file to fix the 'Bad TOML data' error.");
+        }
+
+        process::exit(1);
     }
 }
 
-fn format_display_number(number: &str) -> String {
-    if number.starts_with("+1") && number.len() > 2 {
-        number[2..].to_string()
-    } else if number.starts_with("1") && number.chars().skip(1).all(|c| c.is_digit(10)) {
-        number[1..].to_string()
-    } else {
-        number.to_string()
+fn run() -> Result<()> {
+    let args = Cli::parse();
+    let verbose = args.verbose;
+
+    if verbose {
+        println!("gf v{}", APP_VERSION);
     }
-}
 
-#[derive(Debug, Serialize, Deserialize)]
-struct Config {
-    /// The contact identifier (e.g., phone number or email).
-    contact: Option<String>,
-    /// The display name for the contact.
-    display_name: Option<String>,
-}
+    // Handle configuration
+    let mut config = Config::load()?;
 
-impl ::std::default::Default for Config {
-    fn default() -> Self {
-        Self {
-            contact: None,
-            display_name: None,
+    // Handle subcommands for contact management
+    if let Some(cmd) = args.command {
+        return handle_command(cmd, &mut config, verbose);
+    }
+
+    // Handle the set contact flag
+    if let Some(set_contact) = &args.set {
+        let formatted_contact = format_phone_number(set_contact);
+        config.set_default_contact(formatted_contact.clone());
+        println!("Saved default contact: {}", formatted_contact);
+
+        if verbose {
+            println!("Contact identifier normalized and saved to configuration.");
         }
     }
-}
 
-/// Command line options using clap.
-#[derive(Parser)]
-#[command(author, version, about, long_about = None)]
-struct Cli {
-    /// Set the contact identifier (e.g., phone number or email) and save it to configuration.
-    #[arg(short, long)]
-    set: Option<String>,
-
-    /// Set the display name for the contact.
-    #[arg(short, long)]
-    name: Option<String>,
-
-    /// Optionally override the saved contact identifier for this run.
-    #[arg(short, long)]
-    contact: Option<String>,
-}
-
-fn format_relative_time(dt: DateTime<Local>) -> String {
-    let now = Local::now();
-    let today = now.date_naive();
-    let message_date = dt.date_naive();
-
-    if message_date == today {
-        format!(
-            "today at {}",
-            dt.format("%l:%M%p").to_string().to_lowercase().trim()
-        )
-    } else if message_date == today.pred_opt().unwrap() {
-        format!(
-            "yesterday at {}",
-            dt.format("%l:%M%p").to_string().to_lowercase().trim()
-        )
-    } else {
-        let days = (today - message_date).num_days();
-        format!(
-            "{} days ago at {}",
-            days,
-            dt.format("%l:%M%p").to_string().to_lowercase().trim()
-        )
-    }
-}
-
-fn main() -> Result<()> {
-    let args = Cli::parse();
-
-    let mut cfg: Config = confy::load("gf", None).unwrap();
-
-    let set_flag = args.set.is_some();
-    let name_flag = args.name.is_some();
-
-    // If the --set flag is provided, update the stored configuration.
-    if let Some(set_contact) = &args.set {
-        // Format phone number before saving
-        let formatted_contact = format_phone_number(set_contact);
-        cfg.contact = Some(formatted_contact.clone());
-        println!("Saved contact: {}", formatted_contact);
-    }
-
-    // If the --name flag is provided, update the stored configuration.
+    // Handle the set name flag
     if let Some(name) = &args.name {
-        cfg.display_name = Some(name.clone());
-        println!("Saved display name: {}", name);
+        config.set_default_display_name(name.clone());
+        println!("Saved default display name: {}", name);
+
+        if verbose {
+            println!("Display name saved to configuration.");
+        }
     }
 
     // Save config if either --set or --name was provided
-    if set_flag || name_flag {
-        confy::store("gf", None, cfg).unwrap();
+    if args.set.is_some() || args.name.is_some() {
+        config.save()?;
         return Ok(());
     }
 
-    // Determine which contact to use: command-line override has precedence over saved configuration.
-    let using_cli_contact = args.contact.is_some();
-    let contact = if let Some(cli_contact) = args.contact {
-        // Format phone number from command line
-        format_phone_number(&cli_contact)
-    } else if let Some(cfg_contact) = cfg.contact {
-        // Config contact is already formatted when saved
-        cfg_contact
-    } else {
-        eprintln!("No contact configured. Please set one using: gf --set <contact>");
-        return Ok(());
-    };
+    // Determine which contact to use
+    let (contact, display_name) = get_contact_info(&args, &config, verbose)?;
 
-    // Build the path to the Messages database.
-    let home_dir = env::var("HOME").expect("Could not determine HOME directory");
-    let mut db_path = PathBuf::from(home_dir);
-    db_path.push("Library/Messages/chat.db");
+    // Open the database and fetch the last message
+    let db = MessageDB::open()?;
 
-    // Open the SQLite connection.
-    let conn = Connection::open(db_path)?;
+    if verbose {
+        println!("Querying Messages database for contact: {}", contact);
+    }
 
-    // SQL query to select the last message for the specified contact.
-    // Get the raw timestamp for formatting in Rust
-    let query = r#"
-        SELECT text,
-               date / 1000000000 + strftime('%s','2001-01-01') as unix_timestamp
-        FROM message
-        JOIN handle ON message.handle_id = handle.ROWID
-        WHERE handle.id = ?
-        ORDER BY date DESC
-        LIMIT 1;
-    "#;
-
-    let mut stmt = conn.prepare(query)?;
-    let mut rows = stmt.query(params![contact])?;
-
-    if let Some(row) = rows.next()? {
-        // Retrieve the text and timestamp for the latest message.
-        let text: Option<String> = row.get(0)?;
-        let timestamp: i64 = row.get(1)?;
-
-        // Convert Unix timestamp to DateTime<Local>
-        let dt = Local.timestamp_opt(timestamp, 0).unwrap();
-
-        // Get display name or fall back to contact identifier - only use display name if using saved contact
-        let contact_for_display = format_display_number(&contact);
-        let display_name = if !using_cli_contact {
-            cfg.display_name.as_ref().unwrap_or(&contact_for_display)
-        } else {
-            &contact_for_display
-        };
-
+    if let Some((text, timestamp)) = db.get_last_message(&contact)? {
         println!(
-            "Last message from {} received {}",
+            "Last message received from {} {}",
             display_name,
-            format_relative_time(dt)
+            format_relative_time(timestamp)
         );
         println!("{}", text.unwrap_or_else(|| "<empty message>".into()));
+
+        if verbose {
+            println!("Raw timestamp: {}", timestamp);
+        }
     } else {
-        let contact_for_display = format_display_number(&contact);
-        println!("No messages found for contact: {}", contact_for_display);
+        println!("No messages received from contact: {}", display_name);
     }
 
     Ok(())
+}
+
+/// Handle a CLI subcommand for contact management
+fn handle_command(cmd: Commands, config: &mut Config, verbose: bool) -> Result<()> {
+    match cmd {
+        Commands::Add {
+            name,
+            identifier,
+            display_name,
+        } => {
+            let formatted_id = format_phone_number(&identifier);
+            config.add_contact(name.clone(), formatted_id.clone(), display_name.clone());
+            config.save()?;
+
+            println!(
+                "Added contact '{}' with identifier '{}'",
+                name, formatted_id
+            );
+            if let Some(display) = display_name {
+                println!("Display name: {}", display);
+            }
+
+            if verbose {
+                println!("Configuration updated successfully.");
+            }
+        }
+
+        Commands::Remove { name } => {
+            // Try to find a case-insensitive match first
+            if let Some((actual_name, _)) = config.get_contact_case_insensitive(&name) {
+                let actual_name = actual_name.clone(); // Clone to avoid borrow issues
+
+                // Case-insensitive match found, now remove it
+                if config.remove_contact(&actual_name) {
+                    config.save()?;
+
+                    if actual_name != name {
+                        println!(
+                            "Removed contact '{}' (matched '{}' case-insensitively)",
+                            actual_name, name
+                        );
+                    } else {
+                        println!("Removed contact '{}'", name);
+                    }
+                }
+            } else if config.remove_contact(&name) {
+                // Direct removal succeeded (unlikely to reach this after adding case-insensitive check)
+                config.save()?;
+                println!("Removed contact '{}'", name);
+            } else {
+                println!("Contact '{}' not found in configuration", name);
+            }
+        }
+
+        Commands::List => {
+            println!("Configured Contacts:");
+            println!("-------------------");
+
+            // Show default contact
+            if let Some(default) = config.default_contact() {
+                let display_number = format_display_number(&default);
+                let display = config
+                    .default_display_name()
+                    .map(|n| n.as_str())
+                    .unwrap_or_else(|| &display_number);
+
+                println!("Default: {} ({})", display, default);
+            } else {
+                println!("Default: None");
+            }
+
+            println!();
+            println!("Named Contacts:");
+
+            if config.contact_count() == 0 {
+                println!("  None");
+            } else {
+                for (name, entry) in config.list_contacts() {
+                    let display_number = format_display_number(&entry.identifier);
+                    let display = entry
+                        .display_name
+                        .as_ref()
+                        .map(|n| n.as_str())
+                        .unwrap_or_else(|| &display_number);
+
+                    println!("  {}: {} ({})", name, display, entry.identifier);
+                }
+            }
+        }
+
+        Commands::Config => {
+            if let Some(path) = Config::config_path() {
+                println!("Configuration file location:");
+                println!("{}", path.display());
+            } else {
+                println!("Could not determine configuration file location.");
+            }
+        }
+    }
+
+    Ok(())
+}
+
+/// Get contact information based on command-line arguments and configuration
+fn get_contact_info(args: &Cli, config: &Config, verbose: bool) -> Result<(String, String)> {
+    // Priority:
+    // 1. --contact CLI flag
+    // 2. Positional contact_name argument (named contact)
+    // 3. Default contact from config
+
+    if let Some(cli_contact) = &args.contact {
+        let formatted = format_phone_number(cli_contact);
+        if verbose && formatted != *cli_contact {
+            println!(
+                "Note: Formatted contact identifier from '{}' to '{}'",
+                cli_contact, formatted
+            );
+        }
+
+        let display = format_display_number(&formatted);
+        return Ok((formatted, display));
+    }
+
+    if let Some(contact_name) = &args.contact_name {
+        // Try case-insensitive lookup first
+        if let Some((actual_name, entry)) = config.get_contact_case_insensitive(contact_name) {
+            let display = match &entry.display_name {
+                Some(name) => name.clone(),
+                None => format_display_number(&entry.identifier),
+            };
+
+            if verbose {
+                if actual_name != contact_name {
+                    println!(
+                        "Using contact '{}' (matched '{}' case-insensitively)",
+                        actual_name, contact_name
+                    );
+                } else {
+                    println!("Using contact '{}'", actual_name);
+                }
+            }
+
+            return Ok((entry.identifier.clone(), display));
+        } else {
+            // Fallback to case-sensitive lookup for backward compatibility
+            if let Some(entry) = config.get_contact(contact_name) {
+                let display = match &entry.display_name {
+                    Some(name) => name.clone(),
+                    None => format_display_number(&entry.identifier),
+                };
+
+                if verbose {
+                    println!("Using contact '{}'", contact_name);
+                }
+
+                return Ok((entry.identifier.clone(), display));
+            } else {
+                return Err(Error::Generic(format!(
+                    "Contact '{}' not found in configuration",
+                    contact_name
+                )));
+            }
+        }
+    }
+
+    if let Some(default_contact) = config.default_contact() {
+        if verbose {
+            println!("Using default contact: {}", default_contact);
+        }
+
+        let display = match config.default_display_name() {
+            Some(name) => name.clone(),
+            None => format_display_number(&default_contact),
+        };
+
+        return Ok((default_contact, display));
+    }
+
+    Err(Error::NoContact)
 }

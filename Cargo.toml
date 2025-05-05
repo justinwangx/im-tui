@@ -1,7 +1,18 @@
 [package]
-name = "gf"
+name = "gf-cli"
 version = "0.1.0"
-edition = "2024"
+edition = "2021"
+authors = ["Justin Wang"]
+description = "a cli for viewing texts from loved ones"
+readme = "README.md"
+repository = "https://github.com/justinwangx/gf-cli"
+license = "MIT"
+keywords = ["cli", "macos", "messages", "imessage"]
+categories = ["command-line-utilities"]
+
+[[bin]]
+name = "gf"
+path = "src/main.rs"
 
 [dependencies]
 rusqlite = "0.29.0"
@@ -9,3 +20,10 @@ clap = { version = "4.2", features = ["derive"] }
 serde = { version = "1.0", features = ["derive"] }
 confy = "0.5"
 chrono = "0.4"
+
+[profile.release]
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
+opt-level = 3
