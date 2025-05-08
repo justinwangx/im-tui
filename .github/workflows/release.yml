@@ -48,6 +48,6 @@ jobs:
             release/gf-x86_64-apple-darwin
             release/gf-aarch64-apple-darwin
           draft: false
-          prerelease: fals
+          prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
