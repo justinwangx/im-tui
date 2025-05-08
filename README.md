@@ -4,6 +4,12 @@ a cli for viewing texts from loved ones (macOS)
 
 ## Installation
 
+You can install `gf` by running the following command in your terminal:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/justinwangx/gf-cli/main/install.sh | sh -
+```
+
 If you have Rust and Cargo installed, you can install from source:
 
 ```sh
@@ -19,9 +25,6 @@ cargo install --path .
 ```sh
 # Set a default contact
 gf --set 2125551234
-
-# Set a custom display name for the contact
-gf --set 2125551234 --name "John"
 # Set the display name for the default contact
 gf --name "John"
 ```
