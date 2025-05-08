@@ -1,0 +1,53 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build:
+    name: build and release
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+          target: x86_64-apple-darwin
+
+      - name: Add ARM target
+        run: rustup target add aarch64-apple-darwin
+
+      - name: Build for Intel x86_64
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --release --target x86_64-apple-darwin
+
+      - name: Build for ARM aarch64
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --release --target aarch64-apple-darwin
+
+      - name: Prepare binaries
+        run: |
+          mkdir -p release
+          cp target/x86_64-apple-darwin/release/gf release/gf-x86_64-apple-darwin
+          cp target/aarch64-apple-darwin/release/gf release/gf-aarch64-apple-darwin
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            release/gf-x86_64-apple-darwin
+            release/gf-aarch64-apple-darwin
+          draft: false
+          prerelease: fals
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
