@@ -85,13 +85,19 @@ fn run() -> Result<()> {
         println!("Querying Messages database for contact: {}", contact);
     }
 
-    if let Some((text, timestamp)) = db.get_last_message(&contact)? {
+    if let Some((text, timestamp, message_type)) = db.get_last_message(&contact)? {
         println!(
             "Last message received from {} {}",
             display_name,
             format_relative_time(timestamp)
         );
-        println!("{}", text.unwrap_or_else(|| "<empty message>".into()));
+        if let Some(msg_type) = message_type {
+            println!("[{}]", msg_type);
+        } else if let Some(text) = text {
+            println!("{}", text);
+        } else {
+            println!("<empty message>");
+        }
 
         if verbose {
             println!("Raw timestamp: {}", timestamp);
