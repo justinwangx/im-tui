@@ -37,7 +37,7 @@ impl MessageDB {
                    date / 1000000000 + strftime('%s','2001-01-01') as unix_timestamp,
                    CASE
                        WHEN is_audio_message = 1 THEN 'Audio Message'
-                       WHEN cache_has_attachments = 1 THEN 'Attachment'
+                       WHEN cache_has_attachments = 1 AND (text IS NULL OR text = '￼') THEN 'Image'
                        WHEN balloon_bundle_id IS NOT NULL THEN 'iMessage Effect'
                        WHEN item_type != 0 THEN 'Special Message'
                        ELSE NULL

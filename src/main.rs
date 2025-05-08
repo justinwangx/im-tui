@@ -91,10 +91,10 @@ fn run() -> Result<()> {
             display_name,
             format_relative_time(timestamp)
         );
-        if let Some(text) = text {
-            println!("{}", text);
-        } else if let Some(msg_type) = message_type {
+        if let Some(msg_type) = message_type {
             println!("[{}]", msg_type);
+        } else if let Some(text) = text {
+            println!("{}", text);
         } else {
             println!("<empty message>");
         }
