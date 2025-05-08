@@ -5,6 +5,10 @@ on:
     tags:
       - "v*"
 
+# need this to be able to create releases
+permissions:
+  contents: write
+
 jobs:
   build:
     name: build and release
