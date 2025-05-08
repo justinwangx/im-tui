@@ -30,11 +30,18 @@ impl MessageDB {
     pub fn get_last_message(
         &self,
         contact: &str,
-    ) -> Result<Option<(Option<String>, DateTime<Local>)>> {
+    ) -> Result<Option<(Option<String>, DateTime<Local>, Option<String>)>> {
         // SQL query to select the last message FROM the specified contact (not TO them)
         let query = r#"
             SELECT text,
-                   date / 1000000000 + strftime('%s','2001-01-01') as unix_timestamp
+                   date / 1000000000 + strftime('%s','2001-01-01') as unix_timestamp,
+                   CASE
+                       WHEN is_audio_message = 1 THEN 'Audio Message'
+                       WHEN cache_has_attachments = 1 THEN 'Attachment'
+                       WHEN balloon_bundle_id IS NOT NULL THEN 'iMessage Effect'
+                       WHEN item_type != 0 THEN 'Special Message'
+                       ELSE NULL
+                   END as message_type
             FROM message
             JOIN handle ON message.handle_id = handle.ROWID
             WHERE handle.id = ? AND message.is_from_me = 0
@@ -49,6 +56,7 @@ impl MessageDB {
             // Retrieve the text and timestamp for the latest message
             let text: Option<String> = row.get(0)?;
             let timestamp: i64 = row.get(1)?;
+            let message_type: Option<String> = row.get(2)?;
 
             // Convert Unix timestamp to DateTime<Local>
             let dt = match Local.timestamp_opt(timestamp, 0) {
@@ -56,7 +64,7 @@ impl MessageDB {
                 _ => return Err(Error::Generic("Invalid timestamp".to_string())),
             };
 
-            Ok(Some((text, dt)))
+            Ok(Some((text, dt, message_type)))
         } else {
             Ok(None)
         }
