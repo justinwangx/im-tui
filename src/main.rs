@@ -3,6 +3,7 @@ mod config;
 mod db;
 mod error;
 mod formatter;
+mod sender;
 mod tui;
 
 use crate::cli::{Cli, Commands};

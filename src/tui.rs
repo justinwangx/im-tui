@@ -1,5 +1,6 @@
 use crate::db::MessageDB;
-use crate::error::{Error, Result};
+use crate::error::Result;
+use crate::sender::Sender;
 use chrono::{DateTime, Local};
 use crossterm::{
     event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode},
@@ -11,7 +12,7 @@ use ratatui::{
     widgets::{Block, Borders, Paragraph},
 };
 use std::{
-    io::{self, Write},
+    io,
     time::{Duration, Instant},
 };
 
@@ -22,6 +23,7 @@ pub struct App {
     contact: String,
     display_name: String,
     should_reset_scroll: bool,
+    sender: Sender,
 }
 
 impl App {
@@ -30,9 +32,10 @@ impl App {
             messages: Vec::new(),
             input: String::new(),
             scroll: 0,
-            contact,
+            contact: contact.clone(),
             display_name,
             should_reset_scroll: true,
+            sender: Sender::new(contact),
         }
     }
 
@@ -47,44 +50,9 @@ impl App {
     }
 
     pub fn send_message(&mut self, text: &str) -> Result<()> {
-        // Create the AppleScript command
-        let script = format!(
-            r#"
-            on run {{textBody}}
-                tell application "Messages"
-                    set targetService to first service whose service type = iMessage
-                    set targetBuddy to buddy "{}" of targetService
-                    send textBody to targetBuddy
-                end tell
-            end run
-            "#,
-            self.contact
-        );
-
-        // Execute the AppleScript
-        let mut child = std::process::Command::new("osascript")
-            .arg("-")
-            .arg(text)
-            .stdin(std::process::Stdio::piped())
-            .stdout(std::process::Stdio::piped())
-            .stderr(std::process::Stdio::piped())
-            .spawn()?;
-
-        // Write the script to stdin
-        if let Some(mut stdin) = child.stdin.take() {
-            stdin.write_all(script.as_bytes())?;
-        }
-
-        // Wait for the process to complete and check its output
-        let output = child.wait_with_output()?;
-        if !output.status.success() {
-            let error = String::from_utf8_lossy(&output.stderr);
-            return Err(Error::Generic(format!("Failed to send message: {}", error)));
-        }
-
+        self.sender.send_message(text)?;
         // Reload messages to show the sent message
         self.load_messages()?;
-
         Ok(())
     }
 }
