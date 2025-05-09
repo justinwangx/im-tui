@@ -7,9 +7,8 @@ mod tui;
 
 use crate::cli::{Cli, Commands};
 use crate::config::Config;
-use crate::db::MessageDB;
 use crate::error::{Error, Result};
-use crate::formatter::{format_display_number, format_phone_number, format_relative_time};
+use crate::formatter::{format_display_number, format_phone_number};
 use clap::Parser;
 use std::process;
 
