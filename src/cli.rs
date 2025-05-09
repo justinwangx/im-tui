@@ -59,7 +59,7 @@ pub enum Commands {
     },
 
     /// List all configured contacts
-    List,
+    Contacts,
 
     /// Show the path to the configuration file
     Config,

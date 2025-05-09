@@ -10,6 +10,7 @@ use crate::cli::{Cli, Commands};
 use crate::config::Config;
 use crate::error::{Error, Result};
 use crate::formatter::{format_display_number, format_phone_number};
+use crate::tui::ContactsView;
 use clap::Parser;
 use std::process;
 
@@ -135,40 +136,9 @@ fn handle_command(cmd: Commands, config: &mut Config, verbose: bool) -> Result<(
             }
         }
 
-        Commands::List => {
-            println!("Configured Contacts:");
-            println!("-------------------");
-
-            // Show default contact
-            if let Some(default) = config.default_contact() {
-                let display_number = format_display_number(&default);
-                let display = config
-                    .default_display_name()
-                    .map(|n| n.as_str())
-                    .unwrap_or_else(|| &display_number);
-
-                println!("Default: {} ({})", display, default);
-            } else {
-                println!("Default: None");
-            }
-
-            println!();
-            println!("Named Contacts:");
-
-            if config.contact_count() == 0 {
-                println!("  None");
-            } else {
-                for (name, entry) in config.list_contacts() {
-                    let display_number = format_display_number(&entry.identifier);
-                    let display = entry
-                        .display_name
-                        .as_ref()
-                        .map(|n| n.as_str())
-                        .unwrap_or_else(|| &display_number);
-
-                    println!("  {}: {} ({})", name, display, entry.identifier);
-                }
-            }
+        Commands::Contacts => {
+            let mut contacts_view = ContactsView::new(config.clone());
+            contacts_view.run()?;
         }
 
         Commands::Config => {

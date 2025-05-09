@@ -3,7 +3,7 @@ use crate::error::Result;
 use crate::sender::Sender;
 use chrono::{DateTime, Local};
 use crossterm::{
-    event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode},
+    event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyModifiers},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
@@ -120,8 +120,14 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<(
         if crossterm::event::poll(timeout)? {
             if let Event::Key(key) = event::read()? {
                 match key.code {
-                    KeyCode::Esc => return Ok(()),
-                    KeyCode::Char(c) => app.input.push(c),
+                    KeyCode::Esc | KeyCode::Char('q') | KeyCode::Char('c')
+                        if key.modifiers.contains(KeyModifiers::CONTROL) =>
+                    {
+                        return Ok(());
+                    }
+                    KeyCode::Char(c) => {
+                        app.input.push(c);
+                    }
                     KeyCode::Backspace => {
                         app.input.pop();
                     }
@@ -169,12 +175,9 @@ fn ui(f: &mut Frame, app: &App) {
         .split(f.size());
 
     // Title
-    let title = Paragraph::new(format!(
-        "Chat with {} (Press 'Esc' to quit)",
-        app.display_name
-    ))
-    .block(Block::default().borders(Borders::ALL))
-    .alignment(Alignment::Center);
+    let title = Paragraph::new(format!("Chat with {}", app.display_name))
+        .block(Block::default().borders(Borders::ALL))
+        .alignment(Alignment::Center);
     f.render_widget(title, chunks[0]);
 
     // Messages
