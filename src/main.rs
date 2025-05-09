@@ -3,12 +3,12 @@ mod config;
 mod db;
 mod error;
 mod formatter;
+mod tui;
 
 use crate::cli::{Cli, Commands};
 use crate::config::Config;
-use crate::db::MessageDB;
 use crate::error::{Error, Result};
-use crate::formatter::{format_display_number, format_phone_number, format_relative_time};
+use crate::formatter::{format_display_number, format_phone_number};
 use clap::Parser;
 use std::process;
 
@@ -78,35 +78,8 @@ fn run() -> Result<()> {
     // Determine which contact to use
     let (contact, display_name) = get_contact_info(&args, &config, verbose)?;
 
-    // Open the database and fetch the last message
-    let db = MessageDB::open()?;
-
-    if verbose {
-        println!("Querying Messages database for contact: {}", contact);
-    }
-
-    if let Some((text, timestamp, message_type)) = db.get_last_message(&contact)? {
-        println!(
-            "Last message received from {} {}",
-            display_name,
-            format_relative_time(timestamp)
-        );
-        if let Some(msg_type) = message_type {
-            println!("[{}]", msg_type);
-        } else if let Some(text) = text {
-            println!("{}", text);
-        } else {
-            println!("<empty message>");
-        }
-
-        if verbose {
-            println!("Raw timestamp: {}", timestamp);
-        }
-    } else {
-        println!("No messages received from contact: {}", display_name);
-    }
-
-    Ok(())
+    // Run the TUI
+    tui::run_tui(contact, display_name)
 }
 
 /// Handle a CLI subcommand for contact management

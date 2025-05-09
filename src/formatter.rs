@@ -1,5 +1,3 @@
-use chrono::{DateTime, Local};
-
 /// Format a phone number to a standardized format with country code.
 pub fn format_phone_number(number: &str) -> String {
     // If it's a digit-only string without country code, add +1
@@ -30,36 +28,9 @@ pub fn format_display_number(number: &str) -> String {
     }
 }
 
-/// Format a datetime to a human-readable relative time string.
-pub fn format_relative_time(dt: DateTime<Local>) -> String {
-    let now = Local::now();
-    let today = now.date_naive();
-    let message_date = dt.date_naive();
-
-    if message_date == today {
-        format!(
-            "today at {}",
-            dt.format("%l:%M%p").to_string().to_lowercase().trim()
-        )
-    } else if message_date == today.pred_opt().unwrap() {
-        format!(
-            "yesterday at {}",
-            dt.format("%l:%M%p").to_string().to_lowercase().trim()
-        )
-    } else {
-        let days = (today - message_date).num_days();
-        format!(
-            "{} days ago at {}",
-            days,
-            dt.format("%l:%M%p").to_string().to_lowercase().trim()
-        )
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use chrono::NaiveTime;
 
     #[test]
     fn test_format_phone_number() {
@@ -95,21 +66,5 @@ mod tests {
             format_display_number("email@example.com"),
             "email@example.com"
         );
-    }
-
-    #[test]
-    fn test_format_relative_time() {
-        let now = Local::now();
-        let today = now.date_naive();
-
-        // Test "today at" format
-        let time = NaiveTime::from_hms_opt(14, 30, 0).unwrap();
-        let today_dt = today.and_time(time).and_local_timezone(Local).unwrap();
-
-        let result = format_relative_time(today_dt);
-        assert!(result.starts_with("today at "));
-
-        // We can't really test the exact output of yesterday or days ago
-        // without mocking time, but we can ensure the function doesn't panic
     }
 }

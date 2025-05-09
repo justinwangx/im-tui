@@ -26,12 +26,12 @@ impl MessageDB {
         Ok(Self { conn })
     }
 
-    /// Get the last message for a contact.
-    pub fn get_last_message(
+    /// Get messages for a contact.
+    pub fn get_messages(
         &self,
         contact: &str,
-    ) -> Result<Option<(Option<String>, DateTime<Local>, Option<String>)>> {
-        // SQL query to select the last message FROM the specified contact (not TO them)
+    ) -> Result<Vec<(Option<String>, DateTime<Local>, Option<String>, bool)>> {
+        // SQL query to select messages FROM the specified contact (not TO them)
         let query = r#"
             SELECT text,
                    date / 1000000000 + strftime('%s','2001-01-01') as unix_timestamp,
@@ -41,22 +41,25 @@ impl MessageDB {
                        WHEN balloon_bundle_id IS NOT NULL THEN 'iMessage Effect'
                        WHEN item_type != 0 THEN 'Special Message'
                        ELSE NULL
-                   END as message_type
+                   END as message_type,
+                   is_from_me
             FROM message
             JOIN handle ON message.handle_id = handle.ROWID
-            WHERE handle.id = ? AND message.is_from_me = 0
+            WHERE handle.id = ?
             ORDER BY date DESC
-            LIMIT 1;
+            LIMIT 50;
         "#;
 
         let mut stmt = self.conn.prepare(query)?;
         let mut rows = stmt.query(params![contact])?;
+        let mut messages = Vec::new();
 
-        if let Some(row) = rows.next()? {
-            // Retrieve the text and timestamp for the latest message
+        while let Some(row) = rows.next()? {
+            // Retrieve the text and timestamp for the message
             let text: Option<String> = row.get(0)?;
             let timestamp: i64 = row.get(1)?;
             let message_type: Option<String> = row.get(2)?;
+            let is_from_me: bool = row.get(3)?;
 
             // Convert Unix timestamp to DateTime<Local>
             let dt = match Local.timestamp_opt(timestamp, 0) {
@@ -64,9 +67,9 @@ impl MessageDB {
                 _ => return Err(Error::Generic("Invalid timestamp".to_string())),
             };
 
-            Ok(Some((text, dt, message_type)))
-        } else {
-            Ok(None)
+            messages.push((text, dt, message_type, is_from_me));
         }
+
+        Ok(messages)
     }
 }

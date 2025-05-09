@@ -24,9 +24,9 @@ cargo install --path .
 
 ```sh
 # Set a default contact
-gf --set 2125551234
+gf --set 4163330321
 # Set the display name for the default contact
-gf --name "John"
+gf --name "Aileen"
 ```
 
 ### Check the last received message
@@ -36,23 +36,23 @@ gf --name "John"
 gf
 
 # Or specify a contact for one-time use
-gf --contact 2125551234
+gf --contact 6137770408
 ```
 
 ### Managing multiple contacts
 
 ```sh
 # Add a named contact
-gf add mom 2125551234 --display-name "Mom"
+gf add freeman 6137770408 --display-name "Freeman"
 
 # List all configured contacts
 gf list
 
 # Check the last message received from a named contact (case-insensitive)
-gf mom
+gf freeman
 
 # Remove a contact
-gf remove mom
+gf remove freeman
 
 # Show configuration file location (for manual editing)
 gf config

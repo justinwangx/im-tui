@@ -1,4 +1,4 @@
-use crate::error::Result;
+use crate::error::{Error, Result};
 use crate::APP_NAME;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -12,6 +12,7 @@ pub struct Config {
     /// The display name for the default contact.
     default_display_name: Option<String>,
     /// Map of named contacts to their identifiers.
+    #[serde(default)]
     contacts: HashMap<String, ContactEntry>,
 }
 
@@ -37,7 +38,25 @@ impl Default for Config {
 impl Config {
     /// Load configuration from disk.
     pub fn load() -> Result<Self> {
-        Ok(confy::load(APP_NAME, None)?)
+        match confy::load(APP_NAME, None) {
+            Ok(config) => Ok(config),
+            Err(e) => {
+                // Get the config path for error reporting
+                let path = confy::get_configuration_file_path(APP_NAME, None)
+                    .unwrap_or_else(|_| PathBuf::from("unknown path"));
+
+                // Try to read the raw file contents
+                let contents = std::fs::read_to_string(&path)
+                    .unwrap_or_else(|_| "Could not read file".to_string());
+
+                Err(Error::Generic(format!(
+                    "Failed to load config from {}: {}\nFile contents:\n{}",
+                    path.display(),
+                    e,
+                    contents
+                )))
+            }
+        }
     }
 
     /// Save configuration to disk.
