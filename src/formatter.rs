@@ -31,7 +31,6 @@ pub fn format_display_number(number: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use chrono::NaiveTime;
 
     #[test]
     fn test_format_phone_number() {
