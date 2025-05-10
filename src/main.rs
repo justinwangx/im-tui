@@ -10,7 +10,6 @@ use crate::cli::{Cli, Commands};
 use crate::config::Config;
 use crate::error::{Error, Result};
 use crate::formatter::{format_display_number, format_phone_number};
-use crate::tui::ContactsView;
 use clap::Parser;
 use std::process;
 
@@ -42,7 +41,6 @@ fn run() -> Result<()> {
         println!("gf v{}", APP_VERSION);
     }
 
-    // Handle configuration
     let mut config = Config::load()?;
 
     // Handle subcommands for contact management
@@ -50,7 +48,6 @@ fn run() -> Result<()> {
         return handle_command(cmd, &mut config, verbose);
     }
 
-    // Handle the set contact flag
     if let Some(set_contact) = &args.set {
         let formatted_contact = format_phone_number(set_contact);
         config.set_default_contact(formatted_contact.clone());
@@ -61,7 +58,6 @@ fn run() -> Result<()> {
         }
     }
 
-    // Handle the set name flag
     if let Some(name) = &args.name {
         config.set_default_display_name(name.clone());
         println!("Saved default display name: {}", name);
@@ -77,11 +73,37 @@ fn run() -> Result<()> {
         return Ok(());
     }
 
-    // Determine which contact to use
-    let (contact, display_name) = get_contact_info(&args, &config, verbose)?;
+    // Try to get contact info, if it fails with NoContact, run the setup TUI
+    match get_contact_info(&args, &config, verbose) {
+        Ok((contact, display_name)) => {
+            // Run the TUI with the contact
+            tui::run_chat_tui(contact, display_name)
+        }
+        Err(Error::NoContact) => {
+            if verbose {
+                println!("No contact configured. Launching setup TUI.");
+            }
 
-    // Run the TUI
-    tui::run_tui(contact, display_name)
+            let new_config = tui::run_setup_tui()?;
+
+            // Save the new configuration
+            let config = new_config;
+            config.save()?;
+
+            if let Some(contact) = config.default_contact() {
+                let display_name = match config.default_display_name() {
+                    Some(name) => name.clone(),
+                    None => format_display_number(&contact),
+                };
+
+                tui::run_chat_tui(contact, display_name)
+            } else {
+                // User canceled setup
+                Err(Error::NoContact)
+            }
+        }
+        Err(e) => Err(e),
+    }
 }
 
 /// Handle a CLI subcommand for contact management
@@ -137,8 +159,7 @@ fn handle_command(cmd: Commands, config: &mut Config, verbose: bool) -> Result<(
         }
 
         Commands::Contacts => {
-            let mut contacts_view = ContactsView::new(config.clone());
-            contacts_view.run()?;
+            tui::run_contacts_tui(config.clone())?;
         }
 
         Commands::Config => {
