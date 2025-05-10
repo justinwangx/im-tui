@@ -10,6 +10,12 @@ use ratatui::{
 };
 use std::time::{Duration, Instant};
 
+/// UI update rate (milliseconds)
+const TICK_RATE_MS: u64 = 100;
+
+/// How often to check for new messages (milliseconds)
+const POLL_INTERVAL_MS: u64 = 500;
+
 /// The chat view for messaging with a contact
 pub struct ChatView {
     messages: Vec<(Option<String>, DateTime<Local>, Option<String>, bool)>,
@@ -19,6 +25,7 @@ pub struct ChatView {
     display_name: String,
     should_reset_scroll: bool,
     sender: Sender,
+    last_refresh: Instant,
 }
 
 impl ChatView {
@@ -32,6 +39,7 @@ impl ChatView {
             display_name,
             should_reset_scroll: true,
             sender: Sender::new(contact),
+            last_refresh: Instant::now(),
         }
     }
 
@@ -41,8 +49,15 @@ impl ChatView {
         let mut messages = db.get_messages(&self.contact)?;
         // Reverse the messages so oldest are at the top
         messages.reverse();
+
+        // Check if we need to auto-scroll when new messages arrive
+        if !self.messages.is_empty() && messages.len() > self.messages.len() {
+            self.should_reset_scroll = true;
+        }
+
         self.messages = messages;
-        self.should_reset_scroll = true;
+        self.last_refresh = Instant::now();
+
         Ok(())
     }
 
@@ -67,10 +82,19 @@ impl ChatView {
         // Load messages
         self.load_messages()?;
 
-        let tick_rate = Duration::from_millis(200);
+        let tick_rate = Duration::from_millis(TICK_RATE_MS);
+        let poll_interval = Duration::from_millis(POLL_INTERVAL_MS);
         let mut last_tick = Instant::now();
 
         loop {
+            // Check if it's time to refresh messages
+            if self.last_refresh.elapsed() >= poll_interval {
+                // Check for new messages
+                if let Err(e) = self.load_messages() {
+                    eprintln!("Error loading messages: {}", e);
+                }
+            }
+
             // Reset scroll position if needed
             if self.should_reset_scroll && !self.messages.is_empty() {
                 let size = terminal.size()?;
