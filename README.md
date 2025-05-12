@@ -20,6 +20,8 @@ cargo install --path .
 
 ## Usage
 
+`im` requires the terminal to be able to access your messages. To permit this, navigate to System Preferences -> Security & Privacy -> Full Disk Access. Then grant access to your terminal application.
+
 ### Basic Usage
 
 Message your default contact:
