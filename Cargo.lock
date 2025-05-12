@@ -431,24 +431,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "gf-cli"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "async-trait",
- "chrono",
- "clap",
- "confy",
- "crossterm",
- "futures",
- "ratatui",
- "rusqlite",
- "serde",
- "thiserror",
- "tokio",
-]
-
-[[package]]
 name = "gimli"
 version = "0.31.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -518,6 +500,24 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f31827a206f56af32e590ba56d5d2d085f558508192593743f16b2306495269f"
 dependencies = [
  "cc",
+]
+
+[[package]]
+name = "im-tui"
+version = "0.2.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "chrono",
+ "clap",
+ "confy",
+ "crossterm",
+ "futures",
+ "ratatui",
+ "rusqlite",
+ "serde",
+ "thiserror",
+ "tokio",
 ]
 
 [[package]]

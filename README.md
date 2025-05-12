@@ -1,63 +1,83 @@
-# gf
+# im-tui
 
-a cli for viewing texts from loved ones (macOS)
+text the people you love from the terminal (macOS)
 
 ## Installation
 
-You can install `gf` by running the following command in your terminal:
+You can install `im` by running the following command in your terminal:
 
-```sh
-curl -fsSL https://raw.githubusercontent.com/justinwangx/gf-cli/main/install.sh | sh -
+```bash
+curl -fsSL https://raw.githubusercontent.com/justinwangx/im-tui/main/install.sh | sh -
 ```
 
-If you have Rust and Cargo installed, you can install from source:
+Or build from source:
 
-```sh
-git clone https://github.com/justinwangx/gf-cli.git
-cd gf-cli
+```bash
+git clone https://github.com/justinwangx/im-tui.git
+cd im-tui
 cargo install --path .
 ```
 
 ## Usage
 
-### Configure a default contact
+### Basic Usage
 
-```sh
-# Set a default contact
-gf --set 4163330321
-# Set the display name for the default contact
-gf --name "Aileen"
+Message your default contact:
+
+```bash
+im
 ```
 
-### Check the last received message
+Message a specific contact (one-time use):
 
-```sh
-# See the last message received from your default contact
-gf
-
-# Or specify a contact for one-time use
-gf --contact 6137770408
+```bash
+im --contact 3015551234
 ```
 
-### Managing multiple contacts
+Configure your default contact:
 
-```sh
-# Add a named contact
-gf add freeman 6137770408 --display-name "Freeman"
-
-# List all configured contacts
-gf list
-
-# Check the last message received from a named contact (case-insensitive)
-gf freeman
-
-# Remove a contact
-gf remove freeman
-
-# Show configuration file location (for manual editing)
-gf config
+```bash
+im --set 4163330321
 ```
 
-## How it works
+Configure the display name for your default contact:
 
-`gf` reads directly from the macOS Messages database to retrieve the last message received from the specified contact (not messages you sent to them). It displays the message along with a human-readable timestamp.
+```bash
+im --name "Aileen"
+```
+
+### Contact Management
+
+Message a specific contact:
+
+```bash
+im freeman
+```
+
+Add a new contact:
+
+```bash
+im add freeman 6137770408
+```
+
+Add a new contact with display-name:
+
+```bash
+im add freeman 6137770408 --display-name "Freeman"
+```
+
+List all contacts:
+
+```bash
+im contacts
+```
+
+Remove a contact:
+
+```bash
+im remove freeman
+```
+
+## License
+
+MIT

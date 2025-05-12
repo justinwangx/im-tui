@@ -1,17 +1,17 @@
 [package]
-name = "gf-cli"
-version = "0.1.0"
+name = "im-tui"
+version = "0.2.0"
 edition = "2021"
-authors = ["Justin Wang"]
-description = "a cli for viewing texts from loved ones"
+authors = ["Justin Wang <justinwang46@gmail.com>"]
+description = "a tui for sending and receiving iMessages"
 readme = "README.md"
-repository = "https://github.com/justinwangx/gf-cli"
+repository = "https://github.com/justinwangx/im-tui"
 license = "MIT"
-keywords = ["cli", "macos", "messages", "imessage"]
-categories = ["command-line-utilities"]
+keywords = ["cli", "macos", "messages", "imessage", "tui"]
+categories = ["command-line-utilities", "terminal-utilities"]
 
 [[bin]]
-name = "gf"
+name = "im"
 path = "src/main.rs"
 
 [dependencies]

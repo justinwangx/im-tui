@@ -1,11 +1,11 @@
 use clap::{Parser, Subcommand};
 
-/// gf - A CLI tool to fetch the last message from a contact in Messages.app
+/// im - a tool for sending and receiving iMessages in the terminal
 #[derive(Parser)]
 #[command(
     version,
     author = "Justin Wang",
-    about = "a cli for checking texts from loved ones"
+    about = "send and receive iMessages in the terminal"
 )]
 pub struct Cli {
     /// Set the default contact identifier (e.g., phone number or email) and save it to configuration.

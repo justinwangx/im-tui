@@ -130,7 +130,7 @@ impl SetupView {
             .split(f.size());
 
         // Title
-        let title = Paragraph::new("gf")
+        let title = Paragraph::new("im")
             .style(Style::default().fg(Color::White))
             .alignment(Alignment::Center)
             .block(Block::default().borders(Borders::ALL));
