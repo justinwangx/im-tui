@@ -39,18 +39,18 @@ jobs:
           command: build
           args: --release --target aarch64-apple-darwin
 
-      - name: Prepare binaries
+      - name: Copy binaries
         run: |
           mkdir -p release
-          cp target/x86_64-apple-darwin/release/gf release/gf-x86_64-apple-darwin
-          cp target/aarch64-apple-darwin/release/gf release/gf-aarch64-apple-darwin
+          cp target/x86_64-apple-darwin/release/im release/im-x86_64-apple-darwin
+          cp target/aarch64-apple-darwin/release/im release/im-aarch64-apple-darwin
 
-      - name: Create GitHub Release
+      - name: Create release
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            release/gf-x86_64-apple-darwin
-            release/gf-aarch64-apple-darwin
+            release/im-x86_64-apple-darwin
+            release/im-aarch64-apple-darwin
           draft: false
           prerelease: false
         env:

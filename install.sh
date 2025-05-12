@@ -8,7 +8,7 @@ main() {
     # Check OS - only support macOS
     PLATFORM="$(uname -s)"
     if [[ "$PLATFORM" != "Darwin" ]]; then
-        echo "Error: gf only supports macOS as it interfaces with Messages.app"
+        echo "Error: im only supports macOS as it interfaces with Messages.app"
         exit 1
     fi
 
@@ -52,14 +52,14 @@ main() {
         ARCHITECTURE="x86_64" # Default to x86_64 for other architectures
     fi
 
-    BINARY_URL="https://github.com/justinwangx/gf-cli/releases/latest/download/gf-${ARCHITECTURE}-apple-darwin"
+    BINARY_URL="https://github.com/justinwangx/im-tui/releases/latest/download/im-${ARCHITECTURE}-apple-darwin"
     echo "Downloading from: $BINARY_URL"
 
     echo "Downloading latest binary..."
-    ensure curl -L "$BINARY_URL" -o "$BIN_DIR/gf"
-    chmod +x "$BIN_DIR/gf"
+    ensure curl -L "$BINARY_URL" -o "$BIN_DIR/im"
+    chmod +x "$BIN_DIR/im"
 
-    echo "✅ gf installed successfully!"
+    echo "im installed successfully! ✅"
     
     if [[ -n "$PROFILE" ]]; then
         echo "NOTE: You may need to restart your terminal or run 'source $PROFILE' to update your PATH"

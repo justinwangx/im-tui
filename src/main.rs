@@ -14,7 +14,7 @@ use clap::Parser;
 use std::process;
 
 /// Application name used for configuration files.
-pub const APP_NAME: &str = "gf";
+pub const APP_NAME: &str = "im";
 
 /// Application version.
 pub const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -38,7 +38,7 @@ fn run() -> Result<()> {
     let verbose = args.verbose;
 
     if verbose {
-        println!("gf v{}", APP_VERSION);
+        println!("im v{}", APP_VERSION);
     }
 
     let mut config = Config::load()?;
